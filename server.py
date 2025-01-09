@@ -1,26 +1,34 @@
-from flask import Flask, request
+from flask import Flask, request, Response
 import os
 
 app = Flask(__name__)
 
-# Переменные окружения
 GROUP_TOKEN = os.environ.get("GROUP_TOKEN")
 CONFIRMATION_TOKEN = os.environ.get("CONFIRMATION_TOKEN")
+SECRET_KEY = os.environ.get("SECRET_KEY")  # Если используется
+
 
 @app.route("/", methods=["POST"])
 def callback():
     data = request.get_json()
 
-    # Подтверждение сервера
-    if data["type"] == "confirmation":
-        return CONFIRMATION_TOKEN
+    # Проверка секретного ключа (если используется)
+    if SECRET_KEY and data.get("secret") != SECRET_KEY:
+        return Response("Forbidden", status=403, mimetype='text/plain')
 
-    # Обработка событий
-    if data["type"] == "message_new":
+    # Обработка запроса подтверждения
+    if data.get("type") == "confirmation":
+        return Response(CONFIRMATION_TOKEN, mimetype='text/plain')
+
+    # Обработка новых сообщений
+    if data.get("type") == "message_new":
         user_id = data["object"]["message"]["from_id"]
         message_text = data["object"]["message"]["text"]
         print(f"Сообщение от {user_id}: {message_text}")
-    return "ok"
+        # Добавьте вашу логику обработки сообщений здесь
+
+    return Response("ok", mimetype='text/plain')
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
